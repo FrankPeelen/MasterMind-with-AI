@@ -10,16 +10,23 @@ class AI < Player
 		code
 	end
 
+	# WARNING: THE CODE BELOW HAS NOT BEEN REFACTORED AT ALL. VERY UNCLEAN CODE.
+	# Got very lazy here at the end and did not refactor the below code from the AI here.
+
 	def break_code(field, feedback)
 		return [1, 1, 2, 2] if field.empty?
 		poss = possible_moves(field, feedback)
 		puts "\nAI: I have determined the amount of possible moves to be #{poss.size}."
-		if poss.size > 50
+		if poss.size > 40
 			puts "AI: Calculating the optimal move would take more than a minute. Making a random guess."
 			return poss[0 + rand(poss.size)]
 		end
-		# Find move with highest win chance
-		puts "AI: Calculating the optimal move. This should take no more than about a minute."
+		solve_semi_optimal(field, feedback, poss)
+	end
+
+	private
+	def solve_semi_optimal(field, feedback, poss)
+		puts "AI: Calculating a close to optimal move. This should take no more than about a minute."
 		min = [[1, 1, 1, 1], 100**100]
 		poss.each do |mov|
 			rating = 0
@@ -40,13 +47,32 @@ class AI < Player
 		min[0]
 	end
 
-	private
+	# BROKEN!!!!!
+	def solve_optimal(field, feedback, poss)
+		puts "AI: Calculating the optimal move. This should take no more than about a minute."
+		min = [[1, 1, 1, 1], 100**100]
+		all_legal_moves.each do |mov|
+			rating = 0
+			poss.each do |mov2|
+				hypoth_board = Board.new(Board::Code.new(mov2))
+				hypoth_board.instance_variable_set(:@field, field.dup)
+				hypoth_board.instance_variable_set(:@feedback, feedback.dup)
+				hypoth_board.move(Board::Code.new(mov))
+				rating += possible_moves(hypoth_board.field, hypoth_board.feedback).size
+			end
+			if rating < min[1]
+				min[0] = mov
+				min[1] = rating
+			end
+		end
+		# Result
+		puts min.to_s
+		min[0]
+	end
+
 	def possible_moves(field, feedback)
 		# Set up an array with all possible moves given a blank field.
-		poss_moves = []
-		one_to_six_loop { |a| one_to_six_loop { |b| one_to_six_loop { |c| one_to_six_loop { |d|
-			poss_moves.push([a, b, c, d])
-		} } } }
+		poss_moves = all_legal_moves
 		# Substract the moves that are no longer possible given the field in board.
 		0.upto(field.length - 1).each do |round|
 			c = 0
@@ -81,6 +107,14 @@ class AI < Player
 			}
 		end
 		poss_moves
+	end
+
+	def all_legal_moves
+		legal_moves = []
+		one_to_six_loop { |a| one_to_six_loop { |b| one_to_six_loop { |c| one_to_six_loop { |d|
+			legal_moves.push([a, b, c, d])
+		} } } }
+		legal_moves
 	end
 
 	def one_to_six_loop
